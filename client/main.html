@@ -1,0 +1,74 @@
+<head>
+    <title>server-B</title>
+</head>
+
+<body>
+   <!--  {{> testList }} -->
+</body>
+
+<template name="testList">
+<div class="container">
+    Server B
+
+    <a href="#" class="insert">Insert</a>
+    <a href="#" class="delete">Delete</a>
+    <div class="well">
+    {{#each tests}}
+        {{> testItem}}
+    {{/each}}
+    </div>
+
+    <br>
+    <br>
+      
+    <div class="well ">
+    {{#each controls}}
+        {{> testled}}
+    {{/each}}
+    </div>
+
+    <div class="well ">
+    {{#each sensors}}
+        {{> testsensor}}
+    {{/each}}
+    </div>
+
+    <div class="well ">
+    {{> lineChart}}
+    </div>
+     
+ </div>       
+</template>
+
+<template name="testItem">
+    <li>
+        {{name}}, {{author}}, {{status}}
+    </li>
+</template>
+
+<template name="testled"> 
+     
+         
+            <label for="{{name}}">{{name}} </label>
+        <button type="button" name="{{name}}" id="{{name}}" class="btn {{#if checked}}btn-success{{else}}btn-danger{{/if}}">{{#if checked}}LED ON{{else}}LED OFF{{/if}}</button>
+         <!-- <textarea>{{time}}</textarea> -->
+     
+</template>
+
+
+
+<template name="testsensor"> 
+     
+            <h3>Sensor: {{name}}</h3>
+            <br>
+            <h4>Humidity: {{humidity}}%</h4>
+            <br>
+            <h4>Temperature {{temperature}}C</h4>
+            <br>
+            <h4>Time: {{time}} </h4>
+         
+          
+     
+</template>
+
+
