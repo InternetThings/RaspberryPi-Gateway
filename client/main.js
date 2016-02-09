@@ -21,7 +21,7 @@
             Meteor.call('delete');
         },
         // 'click .btn': function (e) {
-                           'click .btn':   _.debounce(function(e) {
+           'click .btn':   _.debounce(function(e) {
             e.preventDefault();
             console.log(e);
             pinled = Leds.findOne(this._id);
@@ -55,6 +55,10 @@
 
         sensors: function() {
             return Sensors.find({},{ limit : 1 , sort:{time: -1} });
+        },
+
+        sensorslist:  function() {
+            return Sensors.find({},{ limit : 6 , sort:{time: -1} });
         },
 
     });

@@ -1,4 +1,4 @@
-// var Points = new Meteor.Collection(null);
+ // var Points = new Meteor.Collection(null);
 
 // if(Points.find({}).count() === 0){
 // 	for(i = 0; i < 20; i++)
@@ -8,10 +8,36 @@
 // 		});
 // }
 
+Session.setDefault("graph", true);
 
 
+Template.lineChart.helpers({
 
-Template.lineChartTemp.rendered = function(){
+
+	  graph: function () {
+            return Session.get("graph");
+        }
+});
+
+Template.lineChart.events({
+
+	'click #graph': function (e) {
+		if (Session.get("graph") == true) {
+			 Session.set("graph", false);
+			var a = Session.get("graph");
+			console.log(a);
+		}
+           else {
+           	 Session.set("graph", true);
+           	var a = Session.get("graph");
+			console.log(a);
+           }
+        }
+
+});
+
+
+Template.lineChart.rendered = function(){
 	
 	if(Meteor.isMobile) {
 		var margin = {top: 20, right: 20, bottom: 30, left: 50},
@@ -51,7 +77,10 @@ Template.lineChartTemp.rendered = function(){
 			return x(d.time);
 		})
 		.y(function(d) {
-			return y(d.temperature);
+			if (Session.get("graph") == true){
+				return y(d.temperature);
+			}
+			else { return y(d.humidity); }
 		});
 
 	var svg = d3.select("#lineChart")
@@ -66,14 +95,29 @@ Template.lineChartTemp.rendered = function(){
 		.attr("transform", "translate(0," + height + ")")
 		
 
-	svg.append("g")
+	// svg.append("g")
+	// 	.attr("class", "y axis")
+	// 	.append("text")
+	// 	.attr("transform", "rotate(-90)")
+	// 	.attr("y", 10)
+	// 	.attr("dy", ".71em")
+	// 	.style("text-anchor", "end")
+	// 	.text(Session.get("graph"));
+
+
+		
+			  svg.append("g")
 		.attr("class", "y axis")
 		.append("text")
 		.attr("transform", "rotate(-90)")
 		.attr("y", 10)
 		.attr("dy", ".71em")
 		.style("text-anchor", "end")
-		.text("Temperature (C)");
+		.text("Temperature (C) / Humidity (%)");
+		
+          
+        
+
 
 	// function type(d) {
 	//   d.time = formatDate.parse(d.time);
@@ -81,14 +125,17 @@ Template.lineChartTemp.rendered = function(){
 	//   return d;
 	// }	
 
+
+	
+
 	Deps.autorun(function(){
-		var dataset = Sensors.find({},{sort:{time:-1}}).fetch();
+		var dataset = Sensors.find({},{ limit : 300 ,sort:{time:-1}}).fetch();
 
 		var paths = svg.selectAll("path.line")
 			.data([dataset]); //todo - odd syntax here - should use a key function, but can't seem to get that working
 
-		x.domain(d3.extent(dataset, function(d) { d.time = formatDate.parse(d.time); return d.time; }));
-		y.domain(d3.extent(dataset, function(d) { return d.temperature; }));
+		x.domain(d3.extent(dataset, function(d) {  return d.time; }));
+		y.domain(d3.extent(dataset, function(d) { if (Session.get("graph") == true){  return d.temperature;  }  else { return d.humidity;} }));
 
 		//Update X axis
 		svg.select(".x.axis")
