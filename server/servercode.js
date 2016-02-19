@@ -63,7 +63,10 @@ Meteor.methods({
                 Leds.insert({"name": name , "macAddr": macAddr, "checked" : false, "pin": pin});
             } 
 
-            remote.call('controlcreate', macAddr, pin, name);
+            remote.call('controlcreate', macAddr, pin, name , function(error, result) {
+                console.log('CONTROL CREATE TRIGGERED');    
+                console.log(result);
+            }  );
 
     }
 
@@ -163,8 +166,8 @@ if (Meteor.isServer) {
         //remote.subscribe('remote-items', 'B');
         // remote.subscribe('remote-items');
         remote.subscribe('local-items');
-        remote.subscribe('local-leds');
-        remote.subscribe('local-sensors');
+        remote.subscribe('localdevice-leds');
+        remote.subscribe('localdevice-sensors');
 	
 	console.log(this.connection);
     });
@@ -269,6 +272,7 @@ if (Meteor.isServer) {
         console.log(state.client);
         if (state.client == false) {
             Leds.update({macAddr:state.macAddr, pin: state.pin} , {$set: fields} , { $set : { client: state.client}});
+            console.log('LOCAL LED UPDATED');
         }
          
     }
