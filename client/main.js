@@ -50,7 +50,7 @@
         },
 
         controls: function() {
-            return Leds.find();
+            return Leds.find({"system": {$exists: false}});
         },
 
         sensors: function() {

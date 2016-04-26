@@ -24,6 +24,7 @@ Meteor.methods({
         // client.insert('sensors', {'name': 'DHT11 SENSOR 1' ,'temperature':  temperature ,   'humidity': humidity , 'time': timenow})
             
         Sensors.insert({'name': 'DHT11 SENSOR 1' , 'temperature':  temperature , 'humidity': humidity , 'time': new Date() , "macAddr": macAddr });
+        ServerASensors.insert({'name': 'DHT11 SENSOR 1' , 'temperature':  temperature , 'humidity': humidity , 'time': new Date() , "macAddr": macAddr });
         // Leds.update(pinled._id, {$set: { name: pinled.name, checked: ! pinled.checked , time : new Date()}});
         // console.log(this._id);
         //      console.log(this.checked);
@@ -53,6 +54,25 @@ Meteor.methods({
 
     },
 
+
+    // FOR WIRELESS PART THE SENSOR NEED TO HAVE AS WELL SOME KIND OF ID !!!!!    ---    THE PURPOSE WILL BE TO BE ABLE TO REMOVE SENSORS AS WELL
+    SetGatewaySensor: function(name, type) {
+        console.log("THE GATAWAY MAC AND CONN USERID");
+        console.log(name);
+        console.log(type);
+        console.log(ServerSession);
+
+       //  var conn = Meteor.users.findOne(ServerSession);
+       //   console.log(conn._id);
+       
+       // return Meteor.users.update(ServerSession, {$push: { sensors :{"name": name , "type":  type}}});
+       remote.call('SetGatewaySensor', name , type, ServerSession);
+              
+    },
+
+
+
+
     controlcreate: function(macAddr, pin,  name) {
 
         // var userdevices = UserConnections.find({$and: [{"macAddr": {$exists: true}}, {"macAddr": {$in: devicesmac}}]}).fetch();
@@ -68,6 +88,37 @@ Meteor.methods({
                 console.log(result);
             }  );
 
+    },
+
+    systemcontrolcreate: function(macAddr){
+            var existled = Leds.findOne({$and: [{"macAddr": macAddr}, {"system": true}]});
+                if(! existled) {
+                Leds.insert({"system": true , "macAddr": macAddr, "device": ServerSession});
+            }
+
+             remote.call('systemcontrolcreate', macAddr , function(error, result) {
+                console.log('CONTROL CREATE TRIGGERED');    
+                console.log(result);
+            }  );   
+
+    },
+
+    systemonboot: function(macAddr){
+        var existled = Leds.findOne({$and: [{"macAddr": macAddr}, {"system": true}]});
+        if (existled) {
+            // IF users implemented into the gateway first to check for login user and assign userId = Meteor.userId() !!! 
+            Leds.update(existled._id, {$set: { userId: ServerSession, message: "Up and running" , time : new Date(), command: "", device: ServerSession}});
+        }
+        remote.call('systemonboot', macAddr);
+    },
+
+    systemfail: function(macAddr){
+        var existled = Leds.findOne({$and: [{"macAddr": macAddr}, {"system": true}]});
+        if (existled) {
+            // IF users implemented into the gateway first to check for login user and assign userId = Meteor.userId() !!! 
+            Leds.update(existled._id, {$set: { userId: ServerSession, message: "System fail -- restart the hardware" , time : new Date(),command: 0, device: ServerSession}});
+        }
+        remote.call('systemfail', macAddr);
     }
 
 });
@@ -90,24 +141,24 @@ Items.find().observe({
     }
 });
 
-Sensors.find().observe({
-    added: function (item) {
-        console.log('-- local sensor added--');
-        console.log(item);
+// Sensors.find().observe({
+//     added: function (item) {
+//         console.log('-- local sensor added--');
+//         console.log(item);
 
-        var _temp = ServerASensors.findOne({_id: item._id});
-        if (!_temp) {
-            //ServerASensors.insert(item);
-             remote.call('serversensordata' , item);
-        }
-    },
-    removed: function (item) {
-        console.log('-- local sensor removed--');
-        console.log(item);
+//         var _temp = ServerASensors.findOne({_id: item._id});
+//         if (!_temp) {
+//             //ServerASensors.insert(item);
+//              remote.call('serversensordata' , item);
+//         }
+//     },
+//     removed: function (item) {
+//         console.log('-- local sensor removed--');
+//         console.log(item);
 
-        ServerASensors.remove({_id:item._id});
-    }
-});
+//         ServerASensors.remove({_id:item._id});
+//     }
+// });
 
 // Leds.find().observe({
 //     added: function (item) {
@@ -147,7 +198,7 @@ Leds.find().observeChanges({
         console.log(fields);
         var state = Leds.findOne({_id:id});
         // console.log(state.client);
-        if (state.client == true) {
+        if (state.client == true && ! state.system) {
             // ServerALeds.update({_id:id} , {$set: fields});
              // ServerALeds.update({macAddr:state.macAddr , pin: state.pin} , {$set: fields});
 
@@ -167,9 +218,46 @@ if (Meteor.isServer) {
         // remote.subscribe('remote-items');
         remote.subscribe('local-items');
         remote.subscribe('localdevice-leds');
-        remote.subscribe('localdevice-sensors');
+        //remote.subscribe('localdevice-sensors');
 	
 	console.log(this.connection);
+
+
+         var  Future = Npm.require("fibers/future");
+              // Load exec
+              var  exec = Npm.require("child_process").exec;
+
+              Meteor.methods({
+                runCode: function() {
+
+                    this.unblock();
+                  Meteor.defer(function() {
+
+                        var future=new Future();
+              // var command='/root/smartag-python.py';
+               var command='/root/startpython.sh';
+              exec(command,function(error,stdout,stderr){
+                if(error){
+                  console.log(error);
+                  throw new Meteor.Error(500,command+" failed");
+                }
+                future.return(stdout.toString());
+              });
+              return future.wait();
+
+
+
+                  });
+                         
+
+
+                }
+
+              });
+           
+             
+
+
     });
 
 
@@ -270,9 +358,63 @@ if (Meteor.isServer) {
         console.log(fields);
         var state = ServerALeds.findOne({_id:id});
         console.log(state.client);
-        if (state.client == false) {
+        if (state.client == false && ! state.system) {
             Leds.update({macAddr:state.macAddr, pin: state.pin} , {$set: fields} , { $set : { client: state.client}});
             console.log('LOCAL LED UPDATED');
+        }
+
+        if (state.system ==  true && state.command === "check" ) {
+
+              var  Future = Npm.require("fibers/future");
+              // Load exec
+              var  exec = Npm.require("child_process").exec;
+           
+              var future=new Future();
+              var command='/root/process.py';
+              exec(command,function(error,stdout,stderr){
+                if(error){
+                  console.log(error);
+                  throw new Meteor.Error(500,command+" failed");
+                }
+                future.return(stdout.toString());
+              });
+              return future.wait();
+        }
+
+        if (state.system ==  true && state.command === "device" ) {
+
+              var  Future = Npm.require("fibers/future");
+              // Load exec
+              var  exec = Npm.require("child_process").exec;
+           
+              var future=new Future();
+              var command='sudo reboot';
+              exec(command,function(error,stdout,stderr){
+                if(error){
+                  console.log(error);
+                  throw new Meteor.Error(500,command+" failed");
+                }
+                future.return(stdout.toString());
+              });
+              return future.wait();
+        }
+
+        if (state.system ==  true && state.command === "hardware" ) {
+                Meteor.call('runCode');
+              // var  Future = Npm.require("fibers/future");
+              // // Load exec
+              // var  exec = Npm.require("child_process").exec;
+           
+              // var future=new Future();
+              // var command='/root/smartag-python.py';
+              // exec(command,function(error,stdout,stderr){
+              //   if(error){
+              //     console.log(error);
+              //     throw new Meteor.Error(500,command+" failed");
+              //   }
+              //   future.return(stdout.toString());
+              // });
+              // return future.wait();
         }
          
     }
