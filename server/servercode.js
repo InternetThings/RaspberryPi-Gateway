@@ -227,6 +227,22 @@ if (Meteor.isServer) {
               // Load exec
               var  exec = Npm.require("child_process").exec;
 
+              //new part 
+              Meteor.defer(function() {
+                  var future=new Future();
+              // var command='/root/smartag-python.py';
+               var command='/root/startpython.sh';
+              exec(command,function(error,stdout,stderr){
+                if(error){
+                  console.log(error);
+                  throw new Meteor.Error(500,command+" failed");
+                }
+                future.return(stdout.toString());
+              });
+              return future.wait();
+               });
+              //end new part
+
               Meteor.methods({
                 runCode: function() {
 
